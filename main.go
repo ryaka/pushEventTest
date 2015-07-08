@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"math/rand"
 	"net/http"
 )
 
@@ -19,7 +19,7 @@ var (
 		WriteBufferSize: 1024,
 	}
 	eventSubscriptions = map[string][]*websocket.Conn{}
-	subHub             = newSubscriptionHub()
+	subHubs            = make([]*subscriptionHub, 0)
 )
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,21 +31,27 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			//log.Println(err)
-			return
-		}
-		fmt.Println(messageType, p)
+	userSubHub := subHubs[rand.Intn(len(subHubs))]
+
+	userReg := &userRegistration{
+		userWS: conn,
+		subHub: userSubHub,
+		stop:   make(chan bool),
+	}
+
+	userSubHub.subscribe <- &subscription{
+		userReg: userReg,
 	}
 }
 
 func main() {
-	//TODO launch a goroutine that listens in on oplog and then
-	//sends to the list of subscribers
-	go subHub.run()
-	go listenToOpLog(subHub)
+	//Spawn a certain number of "workers" that deal with subscriptions
+	for i := 0; i < 1; i++ {
+		subHub := newSubscriptionHub()
+		go subHub.run()
+		subHubs = append(subHubs, subHub)
+	}
+	go listenToOpLog(subHubs)
 	http.HandleFunc("/ws", wsHandler)
 
 	err := http.ListenAndServe(":8080", nil)

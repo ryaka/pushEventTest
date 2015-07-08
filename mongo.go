@@ -11,7 +11,9 @@ func filterLog(op *gtm.Op) bool {
 	return op.IsInsert()
 }
 
-func listenToOpLog(subHub *subscriptionHub) {
+func listenToOpLog(subHubs []*subscriptionHub) {
+	//Address of where the database for mongo is located
+	//in this case it is on the same machine
 	session, err := mgo.Dial("localhost")
 	if err != nil {
 		panic(err)
@@ -32,9 +34,11 @@ func listenToOpLog(subHub *subscriptionHub) {
 
 			if nameOk && valueOk {
 				fmt.Println("I sent", name, value)
-				subHub.events <- &event{
-					name:  name,
-					value: value,
+				for _, subHub := range subHubs {
+					subHub.events <- &event{
+						name:  name,
+						value: value,
+					}
 				}
 			} else {
 				fmt.Println("name: ", nameOk, " value: ", valueOk)
