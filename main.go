@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"math/rand"
@@ -27,9 +28,10 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	//handle for message subscriptions
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		//log.Println(err)
+		fmt.Println("shit error upgrading to websocket")
 		return
 	}
+	fmt.Println("okay we got a websocket connection")
 
 	userSubHub := subHubs[rand.Intn(len(subHubs))]
 
@@ -38,6 +40,8 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		subHub: userSubHub,
 		stop:   make(chan bool),
 	}
+
+	go userReg.run()
 
 	userSubHub.subscribe <- &subscription{
 		userReg: userReg,

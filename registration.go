@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 )
 
 type userMessage struct {
-	action    string
-	eventName string
+	Action    string `json:"action"`
+	EventName string `json:"eventName"`
 }
 
 type userRegistration struct {
@@ -18,22 +17,20 @@ type userRegistration struct {
 
 func (userReg *userRegistration) run() {
 	for {
-		userMsg := userMessage{}
+		userMsg := &userMessage{}
 		err := userReg.userWS.ReadJSON(&userMsg)
 		if err != nil {
-			//log.Println(err)
+			//Connection closed, unsubscribe user from everything
+			userReg.unsubscribeFromAll()
 			return
 		}
 
-		if userMsg.action == "subscribe" {
-			userReg.subscribeTo(userMsg.eventName)
-		} else if userMsg.action == "unsubscribe" {
-			userReg.unsubscribeFrom(userMsg.eventName)
+		if userMsg.Action == "subscribe" {
+			userReg.subscribeTo(userMsg.EventName)
+		} else if userMsg.Action == "unsubscribe" {
+			userReg.unsubscribeFrom(userMsg.EventName)
 		}
-		fmt.Println(userMsg)
 
-		//Add logic to subscribe the user to more stuff?
-		//userReg.subScribeTo(p)
 	}
 }
 
@@ -48,5 +45,11 @@ func (userReg *userRegistration) unsubscribeFrom(eventName string) {
 	userReg.subHub.unsubscribe <- &subscription{
 		userReg:   userReg,
 		eventName: eventName,
+	}
+}
+
+func (userReg *userRegistration) unsubscribeFromAll() {
+	userReg.subHub.unsubscribeAll <- &subscription{
+		userReg: userReg,
 	}
 }
